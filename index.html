@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BgClear — Free Background Remover</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #07080f;
+      --surface: #10111a;
+      --border:  #1f2133;
+      --accent:  #6c63ff;
+      --accent2: #a78bfa;
+      --text:    #eeeef5;
+      --muted:   #6b6b80;
+      --success: #34d399;
+      --error:   #f87171;
+      --warn:    #fbbf24;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* NAV */
+    nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .usage-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 5px 12px;
+      border-radius: 20px;
+      letter-spacing: 0.04em;
+    }
+    .usage-badge.ok     { color: var(--success); background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.25); }
+    .usage-badge.warn   { color: var(--warn);    background: rgba(251,191,36,0.1);  border: 1px solid rgba(251,191,36,0.25); }
+    .usage-badge.full   { color: var(--error);   background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.25); }
+
+    /* HERO */
+    .hero {
+      text-align: center;
+      padding: 44px 20px 28px;
+    }
+    .hero h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(1.85rem, 6.5vw, 3.1rem);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+    .hero h1 em {
+      font-style: normal;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      color: var(--muted);
+      font-size: 0.93rem;
+      margin-top: 12px;
+      line-height: 1.65;
+      max-width: 360px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .hero-pills {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+    .pill {
+      font-size: 0.73rem;
+      font-weight: 600;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 5px 11px;
+      border-radius: 20px;
+    }
+
+    /* USAGE BAR */
+    .usage-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+    }
+    .usage-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .usage-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .usage-count {
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+    .usage-count.ok   { color: var(--success); }
+    .usage-count.warn { color: var(--warn); }
+    .usage-count.full { color: var(--error); }
+    .progress-track {
+      height: 7px;
+      background: var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 10px;
+      transition: width 0.4s ease;
+    }
+    .progress-fill.ok   { background: linear-gradient(90deg, var(--accent), var(--success)); }
+    .progress-fill.warn { background: linear-gradient(90deg, var(--warn), #f97316); }
+    .progress-fill.full { background: var(--error); }
+    .usage-reset {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 7px;
+    }
+
+    /* LIMIT REACHED BANNER */
+    .limit-banner {
+      display: none;
+      background: rgba(248,113,113,0.08);
+      border: 1px solid rgba(248,113,113,0.3);
+      border-radius: 14px;
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .limit-banner.visible { display: block; }
+    .limit-banner .limit-icon { font-size: 2rem; margin-bottom: 10px; }
+    .limit-banner h3 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--error);
+      margin-bottom: 6px;
+    }
+    .limit-banner p {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .limit-banner .reset-date {
+      display: inline-block;
+      margin-top: 10px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--warn);
+      background: rgba(251,191,36,0.1);
+      border: 1px solid rgba(251,191,36,0.25);
+      padding: 5px 12px;
+      border-radius: 20px;
+    }
+
+    /* MAIN */
+    main {
+      flex: 1;
+      padding: 0 16px 48px;
+      max-width: 660px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* LOADING BAR */
+    .loading-bar {
+      display: none;
+      height: 3px;
+      background: var(--border);
+      border-radius: 3px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .loading-bar.visible { display: block; }
+    .loading-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 3px;
+      animation: loadprogress 2.5s ease-in-out infinite;
+    }
+    @keyframes loadprogress {
+      0%   { width: 0%; }
+      70%  { width: 85%; }
+      100% { width: 95%; }
+    }
+
+    /* UPLOAD ZONE */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 20px;
+      padding: 48px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.25s, background 0.25s;
+      background: var(--surface);
+      position: relative;
+      margin-bottom: 16px;
+    }
+    .upload-zone.disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+    .upload-zone:hover:not(.disabled), .upload-zone.drag {
+      border-color: var(--accent);
+      background: rgba(108,99,255,0.05);
+    }
+    .upload-zone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0;
+      cursor: pointer; width: 100%; height: 100%;
+    }
+    .upload-icon {
+      width: 58px; height: 58px;
+      background: linear-gradient(135deg, rgba(108,99,255,0.18), rgba(167,139,250,0.18));
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 16px;
+      font-size: 1.7rem;
+    }
+    .upload-zone h3 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .upload-zone p { color: var(--muted); font-size: 0.82rem; }
+
+    /* STATUS */
+    .status {
+      display: none;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .status.visible { display: flex; }
+    .status.loading { background: rgba(108,99,255,0.1); border: 1px solid rgba(108,99,255,0.25); color: var(--accent2); }
+    .status.success { background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.25); color: var(--success); }
+    .status.error   { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.25); color: var(--error); }
+    .spinner {
+      width: 15px; height: 15px;
+      border: 2px solid rgba(108,99,255,0.3);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* PREVIEW */
+    .preview-area { display: none; flex-direction: column; gap: 14px; }
+    .preview-area.visible { display: flex; }
+    .preview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .preview-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .preview-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      padding: 10px 14px 0;
+    }
+    .preview-box img {
+      width: 100%;
+      display: block;
+      padding: 10px;
+      object-fit: contain;
+      max-height: 200px;
+    }
+    #resultImg {
+      background: repeating-conic-gradient(#1f2133 0% 25%, #10111a 0% 50%) 0 0 / 14px 14px;
+    }
+    .result-placeholder {
+      height: 160px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 0.78rem;
+      text-align: center;
+      padding: 16px;
+    }
+
+    /* BUTTONS */
+    .btn-primary {
+      width: 100%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      padding: 15px 20px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .btn-primary:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+    .btn-row { display: flex; gap: 10px; }
+    .btn-outline {
+      flex: 1;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 13px 16px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      transition: border-color 0.2s;
+      text-align: center;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn-outline:hover { border-color: var(--accent); }
+
+    /* FEATURES */
+    .features {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 28px;
+    }
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .feature-icon { font-size: 1.4rem; margin-bottom: 8px; }
+    .feature-card h4 { font-size: 0.87rem; font-weight: 700; margin-bottom: 4px; }
+    .feature-card p { font-size: 0.75rem; color: var(--muted); line-height: 1.5; }
+
+    footer {
+      text-align: center;
+      padding: 20px;
+      border-top: 1px solid var(--border);
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    @media (max-width: 380px) {
+      .preview-grid { grid-template-columns: 1fr; }
+      .features { grid-template-columns: 1fr; }
+      .btn-row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">BgClear</div>
+  <div class="usage-badge ok" id="navBadge">50 left this month</div>
+</nav>
+
+<div class="hero">
+  <h1>Remove Background<br/><em>Instantly Free</em></h1>
+  <p>Upload any photo — AI removes the background in seconds. No sign-up. No hidden fees.</p>
+  <div class="hero-pills">
+    <span class="pill">✅ No API Key</span>
+    <span class="pill">✅ No Sign Up</span>
+    <span class="pill">✅ 50 Free / Month</span>
+  </div>
+</div>
+
+<main>
+
+  <!-- Usage Bar -->
+  <div class="usage-section">
+    <div class="usage-top">
+      <span class="usage-label">Monthly Usage</span>
+      <span class="usage-count ok" id="usageCount">0 / 50 used</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill ok" id="progressFill" style="width:0%"></div>
+    </div>
+    <div class="usage-reset" id="usageReset">Resets on 1st of next month</div>
+  </div>
+
+  <!-- Limit Reached Banner -->
+  <div class="limit-banner" id="limitBanner">
+    <div class="limit-icon">🚫</div>
+    <h3>Monthly Limit Reached</h3>
+    <p>You have used all 50 free background removals for this month. Your limit resets automatically on the 1st of next month.</p>
+    <span class="reset-date" id="resetDateText">Resets: loading...</span>
+  </div>
+
+  <div class="loading-bar" id="loadingBar">
+    <div class="loading-bar-fill"></div>
+  </div>
+
+  <!-- Upload Zone -->
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this.files[0])"/>
+    <div class="upload-icon">🖼️</div>
+    <h3>Tap to upload a photo</h3>
+    <p>JPG, PNG or WEBP · Works on any device</p>
+  </div>
+
+  <!-- Status -->
+  <div class="status" id="status">
+    <div class="spinner" id="spinner"></div>
+    <span id="statusText"></span>
+  </div>
+
+  <!-- Preview -->
+  <div class="preview-area" id="previewArea">
+    <div class="preview-grid">
+      <div class="preview-box">
+        <div class="preview-label">Original</div>
+        <img id="originalImg" src="" alt="Original"/>
+      </div>
+      <div class="preview-box">
+        <div class="preview-label">Result</div>
+        <img id="resultImg" src="" alt="Result" style="display:none;"/>
+        <div class="result-placeholder" id="resultPlaceholder">Result appears here</div>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="removeBtn" onclick="removeBg()">
+      ✨ Remove Background
+    </button>
+
+    <div class="btn-row" id="downloadRow" style="display:none;">
+      <a class="btn-outline" id="downloadBtn" download="bgclear-result.png">⬇️ Download PNG</a>
+      <button class="btn-outline" onclick="resetAll()">↩ New Photo</button>
+    </div>
+
+    <button class="btn-outline" id="resetBtn" onclick="resetAll()" style="width:100%;">
+      ↩ Try Another Photo
+    </button>
+  </div>
+
+  <!-- Features -->
+  <div class="features">
+    <div class="feature-card">
+      <div class="feature-icon">⚡</div>
+      <h4>Instant Results</h4>
+      <p>AI removes backgrounds in seconds right in your browser.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔒</div>
+      <h4>100% Private</h4>
+      <p>Your photos never leave your device. Everything is secure.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🎁</div>
+      <h4>50 Free Monthly</h4>
+      <p>50 background removals free every month. Resets automatically.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📱</div>
+      <h4>Works on Mobile</h4>
+      <p>Fully optimized for phones and tablets of all sizes.</p>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  Made with ❤️ · BgClear — Free Background Remover · 50 free uses per month
+</footer>
+
+<script>
+  // ── LIMIT SYSTEM ──
+  const MONTHLY_LIMIT = 50;
+
+  function getStorageKey() {
+    const now = new Date();
+    return `bgclear_usage_${now.getFullYear()}_${now.getMonth() + 1}`;
+  }
+
+  function getUsage() {
+    const key = getStorageKey();
+    return parseInt(localStorage.getItem(key) || '0', 10);
+  }
+
+  function incrementUsage() {
+    const key = getStorageKey();
+    const current = getUsage();
+    localStorage.setItem(key, current + 1);
+    return current + 1;
+  }
+
+  function getRemainingUses() {
+    return Math.max(0, MONTHLY_LIMIT - getUsage());
+  }
+
+  function isLimitReached() {
+    return getUsage() >= MONTHLY_LIMIT;
+  }
+
+  function getResetDate() {
+    const now = new Date();
+    const resetDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    return resetDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  }
+
+  function updateUsageUI() {
+    const used = getUsage();
+    const remaining = getRemainingUses();
+    const percent = Math.min(100, (used / MONTHLY_LIMIT) * 100);
+    const limitReached = isLimitReached();
+
+    // Determine color state
+    let state = 'ok';
+    if (used >= MONTHLY_LIMIT) state = 'full';
+    else if (used >= 40) state = 'warn';
+
+    // Nav badge
+    const navBadge = document.getElementById('navBadge');
+    navBadge.textContent = limitReached ? 'Limit Reached' : `${remaining} left this month`;
+    navBadge.className = `usage-badge ${state}`;
+
+    // Usage count
+    const usageCount = document.getElementById('usageCount');
+    usageCount.textContent = `${used} / ${MONTHLY_LIMIT} used`;
+    usageCount.className = `usage-count ${state}`;
+
+    // Progress bar
+    const fill = document.getElementById('progressFill');
+    fill.style.width = percent + '%';
+    fill.className = `progress-fill ${state}`;
+
+    // Reset date text
+    document.getElementById('usageReset').textContent = `Resets on ${getResetDate()}`;
+    document.getElementById('resetDateText').textContent = `Resets: ${getResetDate()}`;
+
+    // Show/hide limit banner and upload zone
+    const limitBanner = document.getElementById('limitBanner');
+    const uploadZone = document.getElementById('uploadZone');
+
+    if (limitReached) {
+      limitBanner.classList.add('visible');
+      uploadZone.classList.add('disabled');
+      uploadZone.querySelector('input').disabled = true;
+    } else {
+      limitBanner.classList.remove('visible');
+      uploadZone.classList.remove('disabled');
+      uploadZone.querySelector('input').disabled = false;
+    }
+  }
+
+  // ── FILE HANDLING ──
+  let selectedFile = null;
+
+  window.onload = () => {
+    updateUsageUI();
+    const zone = document.getElementById('uploadZone');
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('drag');
+      if (!isLimitReached()) handleFile(e.dataTransfer.files[0]);
+    });
+  };
+
+  function handleFile(file) {
+    if (!file) return;
+    if (isLimitReached()) {
+      showStatus('error', '🚫 Monthly limit reached. Come back next month!');
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      showStatus('error', 'Please upload an image file (JPG, PNG, WEBP).');
+      return;
+    }
+    selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById('originalImg').src = e.target.result;
+      document.getElementById('resultImg').style.display = 'none';
+      document.getElementById('resultImg').src = '';
+      document.getElementById('resultPlaceholder').style.display = 'flex';
+      document.getElementById('downloadRow').style.display = 'none';
+      document.getElementById('resetBtn').style.display = 'flex';
+      document.getElementById('previewArea').classList.add('visible');
+      document.getElementById('uploadZone').style.display = 'none';
+      hideStatus();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // ── BACKGROUND REMOVAL ──
+  async function removeBg() {
+    if (!selectedFile) return;
+
+    if (isLimitReached()) {
+      showStatus('error', '🚫 You have reached your 50 free uses for this month.');
+      return;
+    }
+
+    document.getElementById('removeBtn').disabled = true;
+    document.getElementById('loadingBar').classList.add('visible');
+    showStatus('loading', 'AI is removing the background… please wait.');
+
+    try {
+      const blob = await fetchFromFreeAPI(selectedFile);
+
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        const resultImg = document.getElementById('resultImg');
+        resultImg.src = url;
+        resultImg.style.display = 'block';
+        document.getElementById('resultPlaceholder').style.display = 'none';
+        document.getElementById('downloadBtn').href = url;
+        document.getElementById('downloadRow').style.display = 'flex';
+        document.getElementById('resetBtn').style.display = 'none';
+
+        // Count this usage
+        const newCount = incrementUsage();
+        const remaining = MONTHLY_LIMIT - newCount;
+        updateUsageUI();
+
+        if (remaining <= 0) {
+          showStatus('success', `✅ Done! You have used all 50 free removals this month.`);
+        } else {
+          showStatus('success', `✅ Done! ${remaining} free removal${remaining === 1 ? '' : 's'} left this month.`);
+        }
+      }
+    } catch (err) {
+      showStatus('error', '❌ Something went wrong. Please try again.');
+      console.error(err);
+    } finally {
+      document.getElementById('removeBtn').disabled = false;
+      document.getElementById('loadingBar').classList.remove('visible');
+    }
+  }
+
+  async function fetchFromFreeAPI(file) {
+    const API_URL = "https://api-inference.huggingface.co/models/briaai/RMBG-1.4";
+    const arrayBuffer = await file.arrayBuffer();
+
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": file.type },
+      body: arrayBuffer,
+    });
+
+    if (!response.ok) {
+      if (response.status === 503) {
+        showStatus('loading', '⏳ AI model is warming up… retrying in 10 seconds.');
+        await new Promise(r => setTimeout(r, 10000));
+        return fetchFromFreeAPI(file);
+      }
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    return await response.blob();
+  }
+
+  function resetAll() {
+    selectedFile = null;
+    document.getElementById('fileInput').value = '';
+    document.getElementById('originalImg').src = '';
+    document.getElementById('resultImg').src = '';
+    document.getElementById('resultImg').style.display = 'none';
+    document.getElementById('resultPlaceholder').style.display = 'flex';
+    document.getElementById('downloadRow').style.display = 'none';
+    document.getElementById('resetBtn').style.display = 'flex';
+    document.getElementById('previewArea').classList.remove('visible');
+    document.getElementById('uploadZone').style.display = 'block';
+    document.getElementById('loadingBar').classList.remove('visible');
+    updateUsageUI();
+    hideStatus();
+  }
+
+  function showStatus(type, msg) {
+    const el = document.getElementById('status');
+    el.className = 'status visible ' + type;
+    document.getElementById('statusText').textContent = msg;
+    document.getElementById('spinner').style.display = type === 'loading' ? 'block' : 'none';
+  }
+
+  function hideStatus() {
+    document.getElementById('status').className = 'status';
+  }
+</script>
+</body>
+</html>
